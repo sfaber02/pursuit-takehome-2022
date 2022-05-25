@@ -12,6 +12,8 @@ export const addRestaurant = async (input: Omit<Restaurant, 'id'>): Promise<Rest
 
         const [newRestaurant] = await pgKnex<Restaurant>('Restaurants').insert(input).returning('*');
 
+        await redisClient.set(newRestaurant.id, JSON.stringify(newRestaurant));
+
         return newRestaurant;
     } catch (err) {
         console.error(err);
@@ -24,22 +26,26 @@ export const getRestaurantById = async (id: string): Promise<Restaurant> => {
         // Cache Aside Implementation
         // STEP 1: Check if Restaurant exists in the cache
         // write function here
-
-        // STEP 2: If Restaurant is not in the cache, check the db for the record
-        const restaurant: Restaurant = await pgKnex<Restaurant>('Restaurants')
-            .leftJoin('Reservations', 'Reservations.restaurantId', 'Restaurants.id')
-            .first('Restaurants.*', pgKnex.raw('JSON_AGG("Reservations".*) as reservations'))
-            .where({ 'Restaurants.id': id })
-            .groupBy('Restaurants.id', 'Reservations.restaurantId');
-
-        if (restaurant) {
-            // STEP 3: If Restaurant is not in the cache, add record to the cache
-
-            return restaurant;
+        const cachedRestaurant = await redisClient.get(id);
+        if (cachedRestaurant) {
+            return JSON.parse(cachedRestaurant);
         } else {
-            return null;
-        }
+            // STEP 2: If Restaurant is not in the cache, check the db for the record
+            const restaurant: Restaurant = await pgKnex<Restaurant>('Restaurants')
+                .leftJoin('Reservations', 'Reservations.restaurantId', 'Restaurants.id')
+                .first('Restaurants.*', pgKnex.raw('JSON_AGG("Reservations".*) as reservations'))
+                .where({ 'Restaurants.id': id })
+                .groupBy('Restaurants.id', 'Reservations.restaurantId');
 
+            if (restaurant) {
+                // STEP 3: If Restaurant is not in the cache, add record to the cache
+                await redisClient.set(restaurant.id, JSON.stringify(restaurant));
+                
+                return restaurant;
+            } else {
+                return null;
+            }
+        }
     } catch (err) {
         console.error(err);
         throw new Error('Get Restaurant By ID -- DB Query')
@@ -59,7 +65,7 @@ export const getRestaurants = async ({ filters, searchTerm }: {
                 if (searchTerm) {
                     builder.whereILike('name', `%${searchTerm}%`).orWhereILike('description', `%${searchTerm}%`)
                 }
-                
+
                 // adding filters to whereBuilder
                 if (filters) {
                     Object.entries(filters).forEach(([key, value]) => {

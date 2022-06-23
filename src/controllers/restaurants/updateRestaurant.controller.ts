@@ -19,6 +19,7 @@ const expectedBody = Joi.object({
     openingTime: Joi.date().timestamp(),
     closingTime: Joi.date().timestamp(),
     location: Joi.string(),
+    price: Joi.string(),
     tables: Joi.object({
         twoPersonTables: Joi.number().required(),
         fourPersonTables: Joi.number().required(),

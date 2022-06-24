@@ -19,7 +19,7 @@ const expectedBody = Joi.object({
     openingTime: Joi.string().regex(/^([01]\d|2[0-3]):?([0-5]\d):?([0-5]\d)$/),
     closingTime: Joi.string().regex(/^([01]\d|2[0-3]):?([0-5]\d):?([0-5]\d)$/),
     location: Joi.string(),
-    diningRestriction: Joi.string(),
+    diningRestriction: Joi.string().valid('Delivery Only', 'Takeout Only'),
     price: Joi.string().valid('$', '$$', '$$$', '$$$$'),
     cuisine: Joi.alternatives().try(Joi.array().items(Joi.string()), Joi.string()),
     tables: Joi.object({

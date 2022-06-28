@@ -17,7 +17,7 @@ const expectedBody = Joi.object({
     lastName: Joi.string(),
     phoneNumber: Joi.string().length(10).pattern(/^[0-9]+$/),
     email: Joi.string().email({ tlds: { allow: false } }),
-    time: Joi.date(),
+    time: Joi.string(),
     numGuests: Joi.number(),
 });
 
